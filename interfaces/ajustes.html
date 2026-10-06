@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0" name="viewport">
+    <title>AJUSTES</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-container": "#688988",
+                        "surface-container-lowest": "#0d0e0f",
+                        "surface-container-highest": "#343535",
+                        "on-secondary": "#690000",
+                        "outline": "#8e9192",
+                        "primary-fixed-dim": "#c8c6c5",
+                        "surface-bright": "#38393a",
+                        "surface-container": "#1e2020",
+                        "on-error": "#690005",
+                        "on-error-container": "#ffdad6",
+                        "on-tertiary-fixed": "#002020",
+                        "primary": "#c8c6c5",
+                        "outline-variant": "#444748",
+                        "tertiary-fixed": "#c6e9e9",
+                        "surface-container-low": "#1a1c1c",
+                        "surface": "#121414",
+                        "on-surface-variant": "#c4c7c7",
+                        "surface-dim": "#121414",
+                        "inverse-primary": "#5f5e5e",
+                        "secondary-container": "#920703",
+                        "secondary-fixed": "#ffdad4",
+                        "primary-fixed": "#e5e2e1",
+                        "background": "#121414",
+                        "error": "#ffb4ab",
+                        "surface-variant": "#343535",
+                        "on-background": "#e3e2e2",
+                        "on-primary-fixed": "#1c1b1b",
+                        "tertiary": "#abcdcd",
+                        "on-secondary-container": "#ff9a8a",
+                        "tertiary-container": "#001e1e",
+                        "primary-container": "#1a1a1a",
+                        "error-container": "#93000a",
+                        "secondary-fixed-dim": "#ffb4a8",
+                        "on-surface": "#e3e2e2",
+                        "on-tertiary": "#143535",
+                        "inverse-surface": "#e3e2e2",
+                        "on-tertiary-fixed-variant": "#2c4c4c",
+                        "tertiary-fixed-dim": "#abcdcd",
+                        "on-primary-fixed-variant": "#474746",
+                        "inverse-on-surface": "#2f3131",
+                        "on-primary": "#313030",
+                        "secondary": "#ffb4a8",
+                        "surface-tint": "#c8c6c5",
+                        "on-secondary-fixed": "#410000",
+                        "on-secondary-fixed-variant": "#920703",
+                        "on-primary-container": "#848282",
+                        "surface-container-high": "#292a2a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-safe": "40px",
+                        "unit": "4px",
+                        "stack-sm": "8px",
+                        "stack-md": "24px",
+                        "stack-lg": "48px",
+                        "gutter": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Inter", "sans-serif"],
+                        "data-crunch": ["Inter", "sans-serif"],
+                        "headline-lg-mobile": ["Inter", "sans-serif"],
+                        "body-md": ["Inter", "sans-serif"],
+                        "headline-lg": ["Inter", "sans-serif"],
+                        "label-sm": ["Inter", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["48px", { "lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "data-crunch": ["14px", { "lineHeight": "1.2", "fontWeight": "400" }],
+                        "headline-lg-mobile": ["24px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "1.6", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "1.2", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "1.4", "letterSpacing": "0.1em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined' !important;
+        }
+        .glitch-effect {
+            position: relative;
+            display: inline-block;
+        }
+
+        .group:hover .glitch-effect::before,
+        .group:hover .glitch-effect::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        .group:hover .glitch-effect::before {
+            left: 2px;
+            text-shadow: -2px 0 rgba(255, 0, 0, 0.8);
+            animation: glitch-anim-1 0.2s infinite linear alternate-reverse;
+        }
+
+        .group:hover .glitch-effect::after {
+            left: -2px;
+            text-shadow: 2px 0 rgba(0, 255, 255, 0.8);
+            animation: glitch-anim-2 0.3s infinite linear alternate-reverse;
+        }
+
+        @keyframes glitch-anim-1 {
+            0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+            20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); opacity: 0.8; }
+            40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+            60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); opacity: 0.5; }
+            80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
+            100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, -1px); opacity: 0.9; }
+        }
+
+        @keyframes glitch-anim-2 {
+            0% { clip-path: inset(10% 0 60% 0); transform: translate(2px, -1px); opacity: 1; }
+            20% { clip-path: inset(80% 0 5% 0); transform: translate(-2px, 2px); opacity: 0.8; }
+            40% { clip-path: inset(30% 0 20% 0); transform: translate(2px, 1px); opacity: 1; }
+            60% { clip-path: inset(50% 0 30% 0); transform: translate(-1px, -2px); opacity: 0.9; }
+            80% { clip-path: inset(5% 0 80% 0); transform: translate(2px, 2px); opacity: 1; }
+            100% { clip-path: inset(40% 0 10% 0); transform: translate(-2px, -1px); opacity: 0.8; }
+        }
+        
+        .crt-overlay {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 4px, 6px 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+        .vignette {
+            box-shadow: 0 0 200px rgba(0,0,0,0.9) inset;
+        }
+        
+        .fade-in-out {
+            animation: fadeInOut 2s ease-in-out forwards;
+        }
+        @keyframes fadeInOut {
+            0% { opacity: 1; }
+            30% { opacity: 1; }
+            100% { opacity: 0; display: none; pointer-events: none; }
+        }
+        
+        .settings-btn.active {
+            border-left-width: 4px;
+            border-left-color: theme('colors.secondary-fixed');
+            background-color: rgba(146, 7, 3, 0.3); /* secondary-container/30 */
+            padding-left: theme('spacing.stack-sm');
+        }
+        .settings-btn.active .btn-text {
+            color: theme('colors.secondary-fixed-dim') !important;
+        }
+           .settings-btn:not(.active) .btn-text {
+            color: theme('colors.on-surface-variant');
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen w-screen overflow-hidden relative select-none">
+<!-- fondo  -->
+<div class="absolute inset-0 z-0 vignette bg-cover bg-center" style="background-image: url('fondo_menu.jpg');">
+    <div class="absolute inset-0 bg-surface-container-lowest/80 mix-blend-multiply"></div>
+    <div class="crt-overlay absolute inset-0"></div>
+</div>
+<main class="relative z-10 h-full flex flex-col justify-center px-margin-safe max-w-7xl mx-auto">
+    <div class="absolute top-margin-safe left-margin-safe z-20">
+        <a href="menu.html" class="group relative flex items-center gap-stack-sm p-stack-sm border border-outline/20 bg-surface-container-low/50 hover:bg-surface-container-highest/50 transition-all duration-150 text-left overflow-hidden scale-110">
+            <span class="material-symbols-outlined text-outline group-hover:text-secondary transition-colors">arrow_back</span>
+            <span class="text-body-md tracking-[0.2em] font-semibold text-on-surface-variant group-hover:text-primary glitch-effect uppercase" data-text="VOLVER AL MENÚ">VOLVER AL MENÚ</span>
+            <div class="absolute inset-0 border border-secondary opacity-0 group-hover:opacity-20 animate-pulse pointer-events-none"></div>
+        </a>
+    </div>
+    <div class="grid grid-cols-4 md:grid-cols-12 gap-gutter h-full items-center">
+        <!-- Columna izquierda -->
+        <div class="col-span-4 md:col-span-5 lg:col-span-4 flex flex-col gap-stack-lg bg-surface/80 backdrop-blur-sm p-stack-lg border-l border-outline-variant rounded-sm shadow-2xl relative scale-125">
+            <div class="mb-stack-md border-b border-outline-variant/30 pb-stack-sm">
+                <div class="text-headline-xl font-bold text-primary-fixed uppercase tracking-tighter">AJUSTES</div>
+            </div>
+            <!-- Botones de ajustes -->
+            <div class="flex flex-col gap-stack-sm" id="settings-options">
+                <button class="settings-btn group relative flex items-center justify-between p-stack-sm border border-outline/20 bg-surface-container-low/50 hover:bg-surface-container-highest/50 transition-all duration-150 text-left overflow-hidden active h-20">
+                    <div class="flex items-center gap-stack-sm">
+                        <span class="btn-text text-headline-lg-mobile tracking-[0.2em] font-bold glitch-effect uppercase group-hover:text-primary transition-colors" data-text="GRÁFICOS">GRÁFICOS</span>
+                    </div>
+                    <div class="absolute inset-0 border border-secondary opacity-0 group-hover:opacity-20 animate-pulse pointer-events-none"></div>
+                </button>
+                <button class="settings-btn group relative flex items-center justify-between p-stack-sm border border-outline/20 bg-surface-container-low/50 hover:bg-surface-container-highest/50 transition-all duration-150 text-left overflow-hidden h-20">
+                    <div class="flex items-center gap-stack-sm">
+                        <span class="btn-text text-headline-lg-mobile tracking-[0.2em] font-bold glitch-effect uppercase group-hover:text-primary transition-colors" data-text="SONIDO">SONIDO</span>
+                    </div>
+                    <div class="absolute inset-0 border border-secondary opacity-0 group-hover:opacity-20 animate-pulse pointer-events-none"></div>
+                </button>
+                <button class="settings-btn group relative flex items-center justify-between p-stack-sm border border-outline/20 bg-surface-container-low/50 hover:bg-surface-container-highest/50 transition-all duration-150 text-left overflow-hidden h-20">
+                    <div class="flex items-center gap-stack-sm">
+                        <span class="btn-text text-headline-lg-mobile tracking-[0.2em] font-bold glitch-effect uppercase group-hover:text-primary transition-colors" data-text="CONTROLES">CONTROLES</span>
+                    </div>
+                    <div class="absolute inset-0 border border-secondary opacity-0 group-hover:opacity-20 animate-pulse pointer-events-none"></div>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:block col-span-7 lg:col-span-8"></div>
+    </div>
+</main>
+<script>
+    const buttons = document.querySelectorAll('.settings-btn');
+    buttons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            buttons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+</script>
+</body>
+</html>
