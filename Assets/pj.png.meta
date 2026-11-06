@@ -119,12 +119,12 @@ TextureImporter:
       name: pj_0
       rect:
         serializedVersion: 2
-        x: 600
-        y: 503
-        width: 2360
-        height: 1339
+        x: 515
+        y: 338
+        width: 2599
+        height: 1690
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -146,7 +146,7 @@ TextureImporter:
         width: 11
         height: 15
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -163,7 +163,7 @@ TextureImporter:
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: 5a0b4b98824f23d45816225347c3b3b3
     internalID: 0
     vertices: []
     indices: 
