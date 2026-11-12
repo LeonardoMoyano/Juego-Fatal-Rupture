@@ -1,56 +1,63 @@
 using UnityEngine;
 
 /// <summary>
-/// Genera dinámicamente una malla de campo de visión (Cono de visión) que detecta
-/// y se corta contra las paredes y obstáculos (BoxCollider2D / Layer Wall).
-/// 
-/// Características:
-/// - Sigue la dirección a la que apunta el jugador / mouse.
-/// - Los rayos de visión se detienen al impactar obstáculos.
-/// - FOV (ángulo), alcance (viewDistance) y resolución de rayos configurables.
-/// - Soporta un pequeño radio de visión periférica alrededor del jugador (para que no esté ciego a sus espaldas).
+/// Sistema de Campo de Visión estilo Project Zomboid:
+/// - Cono principal hacia la dirección que mira el jugador / mouse.
+/// - Círculo de visión periférica alrededor del jugador (360° en corto alcance).
+/// - Ambos respetan colisiones de paredes con Raycasts.
+/// - Puntos UV mapeados radialmente para que el shader difumine suavemente hacia los bordes.
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class FieldOfView : MonoBehaviour
 {
     [Header("Referencias")]
-    [Tooltip("Transform del jugador para posicionar y orientar el cono. Si está vacío, toma el padre o a sí mismo.")]
     public Transform playerTransform;
 
     [Header("Capa de Obstáculos")]
     [Tooltip("Capa de las paredes que bloquearán la visión")]
     public LayerMask obstacleLayer;
 
-    [Header("Configuración de Visión")]
-    [Tooltip("Ángulo del cono de visión en grados (ej: 80 para linterna/visión normal)")]
-    [Range(10f, 360f)]
-    public float fov = 85f;
+    [Header("Visión Principal (Cono)")]
+    [Tooltip("Ángulo del cono de visión principal en grados (Project Zomboid suele usar 90° - 110°)")]
+    [Range(30f, 180f)]
+    public float fovAngle = 100f;
 
     [Tooltip("Distancia máxima de visión hacia adelante")]
-    public float viewDistance = 25f;
+    public float viewDistance = 35f;
 
-    [Tooltip("Radio de visión inmediata/periférica alrededor del jugador")]
-    public float innerRadius = 2.5f;
+    [Header("Visión Periférica Cercana (360°)")]
+    [Tooltip("Radio de visión inmediata alrededor del personaje (visión cercana)")]
+    public float closeRadius = 5.5f;
 
-    [Header("Calidad y Suavizado")]
-    [Tooltip("Cantidad de rayos lanzados. Más rayos = bordes más precisos en esquinas")]
-    [Range(50, 400)]
-    public int rayCount = 180;
+    [Header("Calidad")]
+    [Tooltip("Cantidad total de rayos para todo el círculo de visión (más = bordes más limpios)")]
+    [Range(90, 720)]
+    public int totalRays = 360;
+
+    [Header("Capa de Orden (Sorting)")]
+    public int sortingOrder = 10;
 
     private Mesh mesh;
     private Vector3[] vertices;
     private Vector2[] uv;
+    private Color[] colors;
     private int[] triangles;
+    private MeshRenderer meshRenderer;
 
     void Start()
     {
         mesh = new Mesh();
-        mesh.name = "FOV_Mesh";
+        mesh.name = "Zomboid_FOV_Mesh";
         GetComponent<MeshFilter>().mesh = mesh;
+
+        meshRenderer = GetComponent<MeshRenderer>();
+        if (meshRenderer != null)
+        {
+            meshRenderer.sortingOrder = sortingOrder;
+        }
 
         if (playerTransform == null)
         {
-            // Si está como hijo del player, usar el padre
             if (transform.parent != null)
                 playerTransform = transform.parent;
             else
@@ -60,7 +67,6 @@ public class FieldOfView : MonoBehaviour
             }
         }
 
-        // Si obstacleLayer no fue configurado en el inspector, buscar la capa "Wall"
         if (obstacleLayer.value == 0)
         {
             int wallLayerIndex = LayerMask.NameToLayer("Wall");
@@ -73,74 +79,98 @@ public class FieldOfView : MonoBehaviour
 
     void LateUpdate()
     {
-        GenerateVisionMesh();
+        GenerateZomboidMesh();
     }
 
-    private void GenerateVisionMesh()
+    private void GenerateZomboidMesh()
     {
         if (playerTransform == null) return;
 
-        // Mantener la posición en el jugador
-        transform.position = new Vector3(playerTransform.position.x, playerTransform.position.y, -0.5f);
+        // Mantener posición exacta del jugador con ligera Z hacia la cámara
+        transform.position = new Vector3(playerTransform.position.x, playerTransform.position.y, -1f);
 
-        // Obtener dirección del mouse para orientar el cono
+        // Obtener ángulo hacia el mouse
         Vector3 mouseWorld = Camera.main != null ? Camera.main.ScreenToWorldPoint(Input.mousePosition) : Vector3.zero;
         Vector2 aimDirection = (mouseWorld - playerTransform.position);
-        float baseAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+        float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
 
-        // El arco del cono va desde (baseAngle - fov / 2) hasta (baseAngle + fov / 2)
-        float startAngle = baseAngle - (fov / 2f);
-        float angleStep = fov / rayCount;
-
-        // Vertices: [0] = centro (jugador), + (rayCount + 1) vértices del cono
-        int totalVertices = rayCount + 2;
+        int totalVertices = totalRays + 2;
         if (vertices == null || vertices.Length != totalVertices)
         {
             vertices = new Vector3[totalVertices];
             uv = new Vector2[totalVertices];
-            triangles = new int[rayCount * 3];
+            colors = new Color[totalVertices];
+            triangles = new int[totalRays * 3];
         }
 
-        vertices[0] = Vector3.zero; // Origen local
-        uv[0] = new Vector2(0.5f, 0.5f);
+        // Vértice central en el jugador: Máxima visibilidad
+        vertices[0] = Vector3.zero;
+        uv[0] = new Vector2(0f, 1f); // X = distancia relativa (0 = centro), Y = opacidad (1 = total)
+        colors[0] = new Color(1f, 1f, 1f, 1f);
 
+        float angleStep = 360f / totalRays;
         int vertexIndex = 1;
         int triangleIndex = 0;
 
-        for (int i = 0; i <= rayCount; i++)
+        for (int i = 0; i <= totalRays; i++)
         {
-            float currentAngle = startAngle + (angleStep * i);
+            float currentAngle = (angleStep * i);
             Vector3 dir = GetVectorFromAngle(currentAngle);
 
-            // Raycast desde la posición del jugador hacia la dirección
-            RaycastHit2D hit = Physics2D.Raycast(playerTransform.position, dir, viewDistance, obstacleLayer);
+            // Diferencia angular respecto a dónde apunta el mouse (-180 a 180)
+            float angleDiff = Mathf.DeltaAngle(aimAngle, currentAngle);
+
+            // Calcular el alcance teórico de este rayo:
+            // Si está dentro de fovAngle/2, es el cono largo.
+            // En los bordes del cono se suaviza la transición hacia el radio cercano (closeRadius).
+            float maxRayDistance = closeRadius;
+            float halfFov = fovAngle / 2f;
+            float absDiff = Mathf.Abs(angleDiff);
+
+            if (absDiff <= halfFov)
+            {
+                // Dentro del cono principal
+                // Caída suave hacia los límites laterales del cono
+                float blend = Mathf.Cos((absDiff / halfFov) * (Mathf.PI / 2f));
+                maxRayDistance = Mathf.Lerp(closeRadius, viewDistance, blend);
+            }
+
+            // Raycast contra paredes
+            RaycastHit2D hit = Physics2D.Raycast(playerTransform.position, dir, maxRayDistance, obstacleLayer);
 
             Vector3 hitPointLocal;
+            float actualDistance;
             if (hit.collider != null)
             {
-                // Choque con pared
                 hitPointLocal = transform.InverseTransformPoint(hit.point);
+                actualDistance = hit.distance;
             }
             else
             {
-                // Visión libre hasta el alcance máximo
-                hitPointLocal = dir * viewDistance;
+                hitPointLocal = dir * maxRayDistance;
+                actualDistance = maxRayDistance;
             }
 
             vertices[vertexIndex] = hitPointLocal;
 
-            // UVs normalizados
-            uv[vertexIndex] = new Vector2(
-                (hitPointLocal.x / (viewDistance * 2f)) + 0.5f,
-                (hitPointLocal.y / (viewDistance * 2f)) + 0.5f
-            );
+            // Mapeo de atenuación: mientras más lejos llega el rayo, más se desvanece
+            float distRatio = Mathf.Clamp01(actualDistance / viewDistance);
+            float edgeFade = 1f - Mathf.Pow(distRatio, 1.4f);
+            
+            // Si está fuera del cono (en la visión trasera), es más tenue
+            if (absDiff > halfFov)
+            {
+                edgeFade *= 0.6f;
+            }
+
+            uv[vertexIndex] = new Vector2(distRatio, edgeFade);
+            colors[vertexIndex] = new Color(1f, 1f, 1f, edgeFade);
 
             if (i > 0)
             {
                 triangles[triangleIndex + 0] = 0;
                 triangles[triangleIndex + 1] = vertexIndex - 1;
                 triangles[triangleIndex + 2] = vertexIndex;
-
                 triangleIndex += 3;
             }
 
@@ -150,6 +180,7 @@ public class FieldOfView : MonoBehaviour
         mesh.Clear();
         mesh.vertices = vertices;
         mesh.uv = uv;
+        mesh.colors = colors;
         mesh.triangles = triangles;
         mesh.RecalculateBounds();
     }
@@ -160,13 +191,11 @@ public class FieldOfView : MonoBehaviour
         return new Vector3(Mathf.Cos(angleRad), Mathf.Sin(angleRad), 0f);
     }
 
-    /// <summary>
-    /// Permite a otros scripts (como la linterna) cambiar el alcance y el ángulo del cono en tiempo real.
-    /// </summary>
-    public void SetVisionParameters(float newFov, float newDistance)
+    public void SetVisionParameters(float newFov, float newDistance, float newCloseRadius)
     {
-        fov = newFov;
+        fovAngle = newFov;
         viewDistance = newDistance;
+        closeRadius = newCloseRadius;
     }
 
     private void OnDrawGizmosSelected()
@@ -174,5 +203,7 @@ public class FieldOfView : MonoBehaviour
         if (playerTransform == null) return;
         Gizmos.color = new Color(0f, 1f, 0.5f, 0.3f);
         Gizmos.DrawWireSphere(playerTransform.position, viewDistance);
+        Gizmos.color = new Color(1f, 0.9f, 0.2f, 0.4f);
+        Gizmos.DrawWireSphere(playerTransform.position, closeRadius);
     }
 }

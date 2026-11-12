@@ -1,19 +1,18 @@
-Shader "Custom/VisionConeShader"
+Shader "Universal Render Pipeline/2D/VisionConeShader"
 {
     Properties
     {
-        _Color ("Vision Color (Additive/Soft Tint)", Color) = (1, 1, 0.9, 0.35)
-        _CenterColor ("Center Brightness", Color) = (1, 1, 1, 0.6)
-        _FalloffPower ("Falloff Power", Range(0.5, 4.0)) = 1.8
+        _VisionColor ("Color de Vision (Centro)", Color) = (1, 1, 0.95, 0.9)
+        _AmbientColor ("Color Penumbra / Borde", Color) = (0.7, 0.7, 0.7, 0.3)
+        _Smoothness ("Suavizado en Bordes", Range(0.5, 4.0)) = 1.6
     }
 
     SubShader
     {
         Tags 
         { 
-            "Queue" = "Transparent+10" 
+            "Queue" = "Transparent+50" 
             "RenderType" = "Transparent" 
-            "IgnoreProjector" = "True"
             "RenderPipeline" = "UniversalPipeline"
         }
 
@@ -23,52 +22,52 @@ Shader "Custom/VisionConeShader"
 
         Pass
         {
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            struct appdata
+            struct Attributes
             {
-                float4 vertex : POSITION;
+                float4 positionOS : POSITION;
                 float2 uv : TEXCOORD0;
+                float4 color : COLOR;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 vertex : SV_POSITION;
+                float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float dist : TEXCOORD1;
+                float4 color : COLOR;
             };
 
-            fixed4 _Color;
-            fixed4 _CenterColor;
-            float _FalloffPower;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _VisionColor;
+                float4 _AmbientColor;
+                float _Smoothness;
+            CBUFFER_END
 
-            v2f vert (appdata v)
+            Varyings vert(Attributes input)
             {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                o.uv = v.uv;
-                // v.vertex local mide la distancia desde el jugador (origen 0,0,0)
-                o.dist = length(v.vertex.xy);
-                return o;
+                Varyings output;
+                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                output.uv = input.uv;
+                output.color = input.color;
+                return output;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            half4 frag(Varyings input) : SV_Target
             {
-                // Atenuación suave desde el jugador hacia el borde del cono
-                // Las coordenadas UV están normalizadas entre 0 y 1 con 0.5 en el centro
-                float2 fromCenter = (i.uv - 0.5) * 2.0;
-                float radial = clamp(length(fromCenter), 0.0, 1.0);
-                float falloff = pow(1.0 - radial, _FalloffPower);
+                // input.color.a y input.uv.y contienen el factor de atenuación calculado en el script
+                float fade = saturate(input.color.a);
+                fade = pow(fade, _Smoothness);
 
-                fixed4 finalColor = lerp(_Color, _CenterColor, falloff * 0.5);
-                finalColor.a *= falloff;
+                half4 finalColor = lerp(_AmbientColor, _VisionColor, fade);
+                finalColor.a = fade * _VisionColor.a;
 
                 return finalColor;
             }
-            ENDCG
+            ENDHLSL
         }
     }
     FallBack "Sprites/Default"
