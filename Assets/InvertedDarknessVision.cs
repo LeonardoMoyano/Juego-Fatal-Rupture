@@ -1,12 +1,10 @@
 using UnityEngine;
 
 /// <summary>
-/// Crea y dibuja la capa de oscuridad envolvente (Capa 2)
-/// invirtiendo la malla del campo de visión (Mesh Invertida / Donut):
-/// - Dibuja un rectángulo negro gigante alrededor que cubre toda la cámara.
-/// - Deja un agujero transparente exactamente en la forma del cono de visión y el círculo cercano.
-/// - NO depende de Stencil ni de buffers que URP 2D pueda apagar.
-/// - Funciona 100% garantizado con cualquier shader estándar de Sprites.
+/// Sistema de Oscuridad Invertida / Campo de Visión estilo Project Zomboid:
+/// - Cubre toda la pantalla con negro puro conectándose a los bordes de la cámara.
+/// - Recorta el cono de visión y el círculo cercano de espaldas.
+/// - Los rayos de visión colisionan contra paredes (Layer Wall).
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class InvertedDarknessVision : MonoBehaviour
@@ -18,12 +16,16 @@ public class InvertedDarknessVision : MonoBehaviour
     public LayerMask obstacleLayer;
 
     [Header("Visión Principal (Cono)")]
+    [Tooltip("Ángulo del cono hacia donde mira el mouse")]
     [Range(30f, 180f)]
-    public float fovAngle = 100f;
-    public float viewDistance = 35f;
+    public float fovAngle = 105f;
+
+    [Tooltip("Alcance de visión hacia adelante")]
+    public float viewDistance = 45f;
 
     [Header("Visión Periférica Cercana (360°)")]
-    public float closeRadius = 5.5f;
+    [Tooltip("Radio de visión alrededor del personaje (visión inmediata)")]
+    public float closeRadius = 7f;
 
     [Header("Calidad")]
     [Range(90, 720)]
@@ -84,19 +86,18 @@ public class InvertedDarknessVision : MonoBehaviour
         if (playerTransform == null || Camera.main == null) return;
 
         Camera cam = Camera.main;
-        // Situar la malla centrada en la posición del jugador
+        // Situar en la posición del jugador pero con Z adelantada (-0.5f) para tapar el mapa
         transform.position = new Vector3(playerTransform.position.x, playerTransform.position.y, -0.5f);
 
         Vector3 mouseWorld = cam.ScreenToWorldPoint(Input.mousePosition);
         Vector2 aimDirection = (mouseWorld - playerTransform.position);
         float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
 
-        // Tamaño de la caja exterior negra para cubrir de sobra toda la pantalla
-        float outerRadius = cam.orthographicSize * 3f + 50f;
+        // Radio exterior gigante que garantice tapar cualquier resolución y zoom de cámara
+        float camHeight = cam.orthographicSize * 2f;
+        float camWidth = camHeight * cam.aspect;
+        float outerRadius = Mathf.Max(camWidth, camHeight) * 3f + 100f;
 
-        // Vértices:
-        // [0 .. totalRays] = borde interior del agujero de visión
-        // [totalRays + 1 .. 2 * totalRays + 1] = borde exterior gigante negro
         int ringCount = totalRays + 1;
         int totalVertices = ringCount * 2;
 
@@ -121,10 +122,12 @@ public class InvertedDarknessVision : MonoBehaviour
 
             if (absDiff <= halfFov)
             {
+                // Cono frontal largo
                 float blend = Mathf.Cos((absDiff / halfFov) * (Mathf.PI / 2f));
                 maxRayDistance = Mathf.Lerp(closeRadius, viewDistance, blend);
             }
 
+            // Raycast contra paredes
             RaycastHit2D hit = Physics2D.Raycast(playerTransform.position, dir, maxRayDistance, obstacleLayer);
 
             Vector3 innerPointLocal;
@@ -137,15 +140,14 @@ public class InvertedDarknessVision : MonoBehaviour
                 innerPointLocal = dir * maxRayDistance;
             }
 
-            // Vértice interior (borde del agujero de visión)
+            // Borde interior (hueco de visión)
             vertices[i] = innerPointLocal;
             colors[i] = darknessColor;
 
-            // Vértice exterior gigante (cubre la pantalla)
+            // Borde exterior (manto negro que cubre toda la pantalla)
             vertices[ringCount + i] = dir * outerRadius;
             colors[ringCount + i] = darknessColor;
 
-            // Triángulos conectando el anillo interior con el anillo exterior
             if (i < totalRays)
             {
                 int currentInner = i;
@@ -155,12 +157,10 @@ public class InvertedDarknessVision : MonoBehaviour
 
                 int triIndex = i * 6;
 
-                // Triángulo 1
                 triangles[triIndex + 0] = currentInner;
                 triangles[triIndex + 1] = currentOuter;
                 triangles[triIndex + 2] = nextInner;
 
-                // Triángulo 2
                 triangles[triIndex + 3] = nextInner;
                 triangles[triIndex + 4] = currentOuter;
                 triangles[triIndex + 5] = nextOuter;
