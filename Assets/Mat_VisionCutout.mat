@@ -8,7 +8,7 @@ Material:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_Name: Mat_VisionCutout
-  m_Shader: {fileID: 4800000, guid: c34812f8e43ba304d80d1956e54da4f2, type: 3}
+  m_Shader: {fileID: 4800000, guid: 8dcba2b4529b91545b027b17d283d89e, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords: []

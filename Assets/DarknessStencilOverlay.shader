@@ -1,4 +1,4 @@
-Shader "Custom/DarknessStencilOverlay"
+Shader "Universal Render Pipeline/2D/DarknessStencilOverlay"
 {
     Properties
     {
@@ -9,8 +9,9 @@ Shader "Custom/DarknessStencilOverlay"
     {
         Tags 
         { 
-            "Queue" = "Transparent" 
+            "Queue" = "Transparent+100" 
             "RenderType" = "Transparent" 
+            "RenderPipeline" = "UniversalPipeline"
         }
 
         Blend SrcAlpha OneMinusSrcAlpha
@@ -26,35 +27,38 @@ Shader "Custom/DarknessStencilOverlay"
 
         Pass
         {
-            CGPROGRAM
+            HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
-            #include "UnityCG.cginc"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            struct appdata
+            struct Attributes
             {
-                float4 vertex : POSITION;
+                float4 positionOS : POSITION;
             };
 
-            struct v2f
+            struct Varyings
             {
-                float4 vertex : SV_POSITION;
+                float4 positionCS : SV_POSITION;
             };
 
-            fixed4 _Color;
+            CBUFFER_START(UnityPerMaterial)
+                float4 _Color;
+            CBUFFER_END
 
-            v2f vert (appdata v)
+            Varyings vert(Attributes input)
             {
-                v2f o;
-                o.vertex = UnityObjectToClipPos(v.vertex);
-                return o;
+                Varyings output;
+                output.positionCS = TransformObjectToHClip(input.positionOS.xyz);
+                return output;
             }
 
-            fixed4 frag (v2f i) : SV_Target
+            half4 frag(Varyings input) : SV_Target
             {
                 return _Color;
             }
-            ENDCG
+            ENDHLSL
         }
     }
+    FallBack "Sprites/Default"
 }

@@ -2,16 +2,19 @@ using UnityEngine;
 
 /// <summary>
 /// Crea y mantiene una capa negra translúcida/opaca sobre la cámara,
-/// que oscurece el escenario.
+/// que oscurece el escenario y admite el material de corte Stencil.
 /// </summary>
 public class DarknessOverlay : MonoBehaviour
 {
+    [Header("Material Stencil")]
+    [Tooltip("Arrastra aqui el material Mat_DarknessOverlay")]
+    public Material darknessMaterial;
+
     [Header("Ajustes de Oscuridad")]
-    [Tooltip("Color de la penumbra exterior (opacidad configurable)")]
-    public Color darknessColor = new Color(0.01f, 0.01f, 0.02f, 0.85f);
+    public Color darknessColor = Color.black;
 
     [Header("Orden de Renderizado")]
-    public int sortingOrder = 5;
+    public int sortingOrder = 20;
 
     private SpriteRenderer overlayRenderer;
 
@@ -31,6 +34,11 @@ public class DarknessOverlay : MonoBehaviour
         overlayRenderer.sprite = sprite;
         overlayRenderer.color = darknessColor;
         overlayRenderer.sortingOrder = sortingOrder;
+
+        if (darknessMaterial != null)
+        {
+            overlayRenderer.material = darknessMaterial;
+        }
     }
 
     void LateUpdate()
@@ -38,10 +46,11 @@ public class DarknessOverlay : MonoBehaviour
         if (Camera.main != null)
         {
             Camera cam = Camera.main;
-            float height = cam.orthographicSize * 2f + 20f;
-            float width = height * cam.aspect + 20f;
+            float height = cam.orthographicSize * 2f + 30f;
+            float width = height * cam.aspect + 30f;
 
-            transform.position = new Vector3(cam.transform.position.x, cam.transform.position.y, -0.5f);
+            // Z ligeramente más alejada de la cámara que el VisionCone
+            transform.position = new Vector3(cam.transform.position.x, cam.transform.position.y, 0f);
             transform.localScale = new Vector3(width, height, 1f);
         }
     }
