@@ -2,7 +2,9 @@ using UnityEngine;
 
 /// <summary>
 /// Sistema de Oscuridad Invertida / Campo de Visión estilo Project Zomboid:
-/// - Cubre toda la pantalla con negro puro conectándose a los bordes de la cámara.
+/// - Cubre toda la pantalla con negro puro.
+/// - Apunta con precisión matemática exactamente hacia el cursor del mouse.
+/// - La rotación local de VisionCone se mantiene en 0 para evitar desfases causados por PlayerAim.
 /// - Recorta el cono de visión y el círculo cercano de espaldas.
 /// - Los rayos de visión colisionan contra paredes (Layer Wall).
 /// </summary>
@@ -18,7 +20,7 @@ public class InvertedDarknessVision : MonoBehaviour
     [Header("Visión Principal (Cono)")]
     [Tooltip("Ángulo del cono hacia donde mira el mouse")]
     [Range(30f, 180f)]
-    public float fovAngle = 105f;
+    public float fovAngle = 100f;
 
     [Tooltip("Alcance de visión hacia adelante")]
     public float viewDistance = 45f;
@@ -86,17 +88,25 @@ public class InvertedDarknessVision : MonoBehaviour
         if (playerTransform == null || Camera.main == null) return;
 
         Camera cam = Camera.main;
-        // Situar en la posición del jugador pero con Z adelantada (-0.5f) para tapar el mapa
-        transform.position = new Vector3(playerTransform.position.x, playerTransform.position.y, -0.5f);
 
-        Vector3 mouseWorld = cam.ScreenToWorldPoint(Input.mousePosition);
-        Vector2 aimDirection = (mouseWorld - playerTransform.position);
+        // Mantener posición en el jugador con Z adelantada (-0.5f)
+        transform.position = new Vector3(playerTransform.position.x, playerTransform.position.y, -0.5f);
+        // IMPORTANTE: Bloquear la rotación del cono en el mundo (Quaternion.identity)
+        // para que no se sume con la rotación de PlayerAim del padre
+        transform.rotation = Quaternion.identity;
+
+        // Obtener la posición del cursor en coordenadas de mundo 2D
+        Vector3 mouseScreen = Input.mousePosition;
+        mouseScreen.z = -cam.transform.position.z; // Distancia correcta a la cámara
+        Vector3 mouseWorld = cam.ScreenToWorldPoint(mouseScreen);
+
+        Vector2 aimDirection = (new Vector2(mouseWorld.x, mouseWorld.y) - (Vector2)playerTransform.position);
         float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
 
         // Radio exterior gigante que garantice tapar cualquier resolución y zoom de cámara
         float camHeight = cam.orthographicSize * 2f;
         float camWidth = camHeight * cam.aspect;
-        float outerRadius = Mathf.Max(camWidth, camHeight) * 3f + 100f;
+        float outerRadius = Mathf.Max(camWidth, camHeight) * 4f + 120f;
 
         int ringCount = totalRays + 1;
         int totalVertices = ringCount * 2;
@@ -122,7 +132,7 @@ public class InvertedDarknessVision : MonoBehaviour
 
             if (absDiff <= halfFov)
             {
-                // Cono frontal largo
+                // Cono frontal largo apuntando al cursor
                 float blend = Mathf.Cos((absDiff / halfFov) * (Mathf.PI / 2f));
                 maxRayDistance = Mathf.Lerp(closeRadius, viewDistance, blend);
             }
@@ -133,7 +143,9 @@ public class InvertedDarknessVision : MonoBehaviour
             Vector3 innerPointLocal;
             if (hit.collider != null)
             {
-                innerPointLocal = transform.InverseTransformPoint(hit.point);
+                // Como transform.rotation es identidad y transform.position es playerTransform.position,
+                // el punto local es simplemente la diferencia directa:
+                innerPointLocal = new Vector3(hit.point.x - playerTransform.position.x, hit.point.y - playerTransform.position.y, 0f);
             }
             else
             {
