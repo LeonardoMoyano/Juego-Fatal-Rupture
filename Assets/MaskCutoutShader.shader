@@ -4,24 +4,25 @@ Shader "Universal Render Pipeline/2D/MaskCutoutShader"
     {
         Tags 
         { 
-            "Queue" = "Geometry+10" 
-            "RenderType" = "Opaque" 
+            "Queue" = "Transparent-20" 
+            "RenderType" = "Transparent" 
             "RenderPipeline" = "UniversalPipeline"
-        }
-
-        ColorMask 0
-        ZWrite Off
-        Cull Off
-
-        Stencil
-        {
-            Ref 1
-            Comp Always
-            Pass Replace
         }
 
         Pass
         {
+            Name "MaskPass"
+            ZWrite Off
+            Cull Off
+            ColorMask 0
+
+            Stencil
+            {
+                Ref 1
+                Comp Always
+                Pass Replace
+            }
+
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag

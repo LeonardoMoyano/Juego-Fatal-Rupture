@@ -9,24 +9,25 @@ Shader "Universal Render Pipeline/2D/DarknessStencilOverlay"
     {
         Tags 
         { 
-            "Queue" = "Transparent+100" 
+            "Queue" = "Transparent+50" 
             "RenderType" = "Transparent" 
             "RenderPipeline" = "UniversalPipeline"
         }
 
-        Blend SrcAlpha OneMinusSrcAlpha
-        ZWrite Off
-        Cull Off
-
-        Stencil
-        {
-            Ref 1
-            Comp NotEqual
-            Pass Keep
-        }
-
         Pass
         {
+            Name "OverlayPass"
+            Blend SrcAlpha OneMinusSrcAlpha
+            ZWrite Off
+            Cull Off
+
+            Stencil
+            {
+                Ref 1
+                Comp NotEqual
+                Pass Keep
+            }
+
             HLSLPROGRAM
             #pragma vertex vert
             #pragma fragment frag
