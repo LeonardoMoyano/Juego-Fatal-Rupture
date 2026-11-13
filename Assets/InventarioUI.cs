@@ -5,6 +5,7 @@ using UnityEngine.EventSystems;
 
 /// <summary>
 /// Panel de Inventario con cuadrícula 3x3 que se abre/cierra con la tecla [TAB].
+/// - Canvas independiente con SortingOrder = 100 para estar SIEMPRE por encima de la oscuridad.
 /// - Grilla 3x3 de slots (9 casillas) con tamaño y letras ampliadas.
 /// - Pausa el movimiento, apuntado y ataque del jugador mientras está abierto.
 /// - Al pasar el mouse por encima muestra un Tooltip claro con el nombre.
@@ -41,7 +42,6 @@ public class InventarioUI : MonoBehaviour
 
     void Start()
     {
-        // Encontrar scripts del jugador
         GameObject playerGO = GameObject.FindGameObjectWithTag("Player");
         if (playerGO != null)
         {
@@ -115,7 +115,7 @@ public class InventarioUI : MonoBehaviour
                 int cant = inventario[nombre];
 
                 slotItems[i] = nombre;
-                slotIconos[i].color = new Color(0.2f, 0.6f, 0.95f, 0.95f); // Cuadrado azul
+                slotIconos[i].color = new Color(0.2f, 0.6f, 0.95f, 0.95f);
                 slotTextos[i].text = cant > 1 ? $"x{cant}" : "";
                 slotIconos[i].gameObject.SetActive(true);
             }
@@ -127,8 +127,6 @@ public class InventarioUI : MonoBehaviour
             }
         }
     }
-
-    // --- Acciones de los Ítems ---
 
     public void AlHacerClicEnSlot(int index)
     {
@@ -217,21 +215,22 @@ public class InventarioUI : MonoBehaviour
         }
     }
 
-    // --- Construcción Procedural de la UI ---
-
     private void ConstruirUIProcedural()
     {
-        Canvas canvas = Object.FindAnyObjectByType<Canvas>();
-        if (canvas == null)
-        {
-            GameObject cgo = new GameObject("Canvas_Inventario");
-            canvas = cgo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            cgo.AddComponent<CanvasScaler>();
-            cgo.AddComponent<GraphicRaycaster>();
-        }
+        // Crear un Canvas dedicado con SortingOrder = 100 para garantizar que esté SIEMPRE por encima de la oscuridad
+        GameObject canvasGO = new GameObject("Canvas_Inventario_Dedicado");
+        Canvas canvas = canvasGO.AddComponent<Canvas>();
+        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+        canvas.sortingOrder = 100;
 
-        // Panel Principal más amplio (500 x 560 px)
+        CanvasScaler scaler = canvasGO.AddComponent<CanvasScaler>();
+        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+        scaler.referenceResolution = new Vector2(1920, 1080);
+        scaler.matchWidthOrHeight = 0.5f;
+
+        canvasGO.AddComponent<GraphicRaycaster>();
+
+        // Panel Principal (500 x 560 px)
         panelPrincipal = new GameObject("Panel_Inventario_3x3");
         panelPrincipal.transform.SetParent(canvas.transform, false);
 
@@ -242,7 +241,7 @@ public class InventarioUI : MonoBehaviour
         Image bg = panelPrincipal.AddComponent<Image>();
         bg.color = new Color(0.06f, 0.06f, 0.08f, 0.96f);
 
-        // Título "INVENTARIO [TAB]" más grande
+        // Título "INVENTARIO [TAB]"
         GameObject titleGO = new GameObject("Titulo");
         titleGO.transform.SetParent(panelPrincipal.transform, false);
         RectTransform titleRT = titleGO.AddComponent<RectTransform>();
@@ -255,7 +254,7 @@ public class InventarioUI : MonoBehaviour
         titleTxt.alignment = TextAnchor.MiddleCenter;
         titleTxt.color = Color.white;
 
-        // Grilla 3x3 ampliada (casillas de 115 x 115 px)
+        // Grilla 3x3
         GameObject gridGO = new GameObject("Grilla");
         gridGO.transform.SetParent(panelPrincipal.transform, false);
         RectTransform gridRT = gridGO.AddComponent<RectTransform>();
@@ -282,7 +281,6 @@ public class InventarioUI : MonoBehaviour
             SlotHoverTrigger hover = slot.AddComponent<SlotHoverTrigger>();
             hover.Init(slotIdx, this);
 
-            // Icono del ítem (cuadrado azul grande)
             GameObject itemIconGO = new GameObject("Icono");
             itemIconGO.transform.SetParent(slot.transform, false);
             RectTransform iconRT = itemIconGO.AddComponent<RectTransform>();
@@ -291,7 +289,6 @@ public class InventarioUI : MonoBehaviour
             slotIconos[i].color = new Color(0.2f, 0.6f, 0.95f, 0.95f);
             itemIconGO.SetActive(false);
 
-            // Texto de cantidad ampliado
             GameObject cantGO = new GameObject("Cantidad");
             cantGO.transform.SetParent(slot.transform, false);
             RectTransform cantRT = cantGO.AddComponent<RectTransform>();
@@ -306,10 +303,7 @@ public class InventarioUI : MonoBehaviour
             slotTextos[i].color = Color.white;
         }
 
-        // Menú Contextual más amplio
         ConstruirMenuContextual(canvas);
-
-        // Tooltip ampliado
         ConstruirTooltip(canvas);
     }
 
@@ -403,9 +397,6 @@ public class InventarioUI : MonoBehaviour
     }
 }
 
-/// <summary>
-/// Componente auxiliar para detectar el hover del mouse sobre cada slot.
-/// </summary>
 public class SlotHoverTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
 {
     private int slotIndex;
