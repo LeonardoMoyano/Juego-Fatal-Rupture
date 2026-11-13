@@ -1572,7 +1572,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 10754, guid: 0000000000000000f000000000000000, type: 0}
+  - {fileID: 2100000, guid: acb38c4f87ed0844f93ef55261ab8f93, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -1623,8 +1623,8 @@ MonoBehaviour:
   fovAngle: 100
   viewDistance: 35
   closeRadius: 5.5
+  fadeDistance: 6
   totalRays: 360
-  darknessColor: {r: 0, g: 0, b: 0, a: 1}
   sortingOrder: 20
 --- !u!1 &302962113
 GameObject:
