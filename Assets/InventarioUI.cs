@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Panel de Inventario con cuadrícula 3x3 que se abre/cierra con la tecla [TAB].
@@ -74,7 +75,6 @@ public class InventarioUI : MonoBehaviour
         if (panelPrincipal != null) panelPrincipal.SetActive(true);
         Cursor.visible = true;
 
-        // Pausar control del personaje
         SetPlayerControls(false);
 
         ActualizarGrilla();
@@ -89,7 +89,6 @@ public class InventarioUI : MonoBehaviour
         if (tooltip != null) tooltip.SetActive(false);
         Cursor.visible = false;
 
-        // Reactivar control del personaje
         SetPlayerControls(true);
     }
 
@@ -170,7 +169,7 @@ public class InventarioUI : MonoBehaviour
         }
         else if (itemSeleccionado.Contains("Botiquin") || itemSeleccionado.Contains("Cura"))
         {
-            PlayerHealth ph = Object.FindFirstObjectByType<PlayerHealth>();
+            PlayerHealth ph = Object.FindAnyObjectByType<PlayerHealth>();
             if (ph != null)
             {
                 ph.Heal(35f);
@@ -218,11 +217,11 @@ public class InventarioUI : MonoBehaviour
         }
     }
 
-    // --- Construcción Procedural de la UI (Ampliadas dimensiones y tipografías) ---
+    // --- Construcción Procedural de la UI ---
 
     private void ConstruirUIProcedural()
     {
-        Canvas canvas = Object.FindFirstObjectByType<Canvas>();
+        Canvas canvas = Object.FindAnyObjectByType<Canvas>();
         if (canvas == null)
         {
             GameObject cgo = new GameObject("Canvas_Inventario");
@@ -241,7 +240,7 @@ public class InventarioUI : MonoBehaviour
         rt.anchoredPosition = Vector2.zero;
 
         Image bg = panelPrincipal.AddComponent<Image>();
-        bg.color = new Color(0.06f, 0.06f, 0.08f, 0.96f); // Ventana oscura
+        bg.color = new Color(0.06f, 0.06f, 0.08f, 0.96f);
 
         // Título "INVENTARIO [TAB]" más grande
         GameObject titleGO = new GameObject("Titulo");
@@ -256,7 +255,7 @@ public class InventarioUI : MonoBehaviour
         titleTxt.alignment = TextAnchor.MiddleCenter;
         titleTxt.color = Color.white;
 
-        // Grilla 3x3 ampliada (casillas de 120 x 120 px)
+        // Grilla 3x3 ampliada (casillas de 115 x 115 px)
         GameObject gridGO = new GameObject("Grilla");
         gridGO.transform.SetParent(panelPrincipal.transform, false);
         RectTransform gridRT = gridGO.AddComponent<RectTransform>();
@@ -401,5 +400,30 @@ public class InventarioUI : MonoBehaviour
         tooltipTexto.color = new Color(0.95f, 0.95f, 0.95f, 1f);
 
         tooltip.SetActive(false);
+    }
+}
+
+/// <summary>
+/// Componente auxiliar para detectar el hover del mouse sobre cada slot.
+/// </summary>
+public class SlotHoverTrigger : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+{
+    private int slotIndex;
+    private InventarioUI inventarioUI;
+
+    public void Init(int index, InventarioUI ui)
+    {
+        slotIndex = index;
+        inventarioUI = ui;
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        if (inventarioUI != null) inventarioUI.AlPasarMouseSobreSlot(slotIndex, true);
+    }
+
+    public void OnPointerExit(PointerEventData eventData)
+    {
+        if (inventarioUI != null) inventarioUI.AlPasarMouseSobreSlot(slotIndex, false);
     }
 }
