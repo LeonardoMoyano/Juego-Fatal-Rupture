@@ -3,8 +3,8 @@ using UnityEngine;
 /// <summary>
 /// Sistema de Oscuridad Invertida / Campo de Visión estilo Project Zomboid:
 /// - Cubre toda la pantalla con negro puro.
+/// - Los vértices se calculan en espacio de MUNDO para ser 100% inmunes a escala o rotación del Player.
 /// - Apunta con precisión matemática exactamente hacia el cursor del mouse.
-/// - La rotación local de VisionCone se mantiene en 0 para evitar desfases causados por PlayerAim.
 /// - Recorta el cono de visión y el círculo cercano de espaldas.
 /// - Los rayos de visión colisionan contra paredes (Layer Wall).
 /// </summary>
@@ -89,24 +89,32 @@ public class InvertedDarknessVision : MonoBehaviour
 
         Camera cam = Camera.main;
 
-        // Mantener posición en el jugador con Z adelantada (-0.5f)
-        transform.position = new Vector3(playerTransform.position.x, playerTransform.position.y, -0.5f);
-        // IMPORTANTE: Bloquear la rotación del cono en el mundo (Quaternion.identity)
-        // para que no se sume con la rotación de PlayerAim del padre
+        // Anular cualquier rotación heredada del Player
         transform.rotation = Quaternion.identity;
 
-        // Obtener la posición del cursor en coordenadas de mundo 2D
+        // IMPORTANTE: Neutralizar la escala heredada del Player para que el cono no se aplaste
+        Vector3 parentLossyScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
+        transform.localScale = new Vector3(
+            parentLossyScale.x != 0f ? 1f / parentLossyScale.x : 1f,
+            parentLossyScale.y != 0f ? 1f / parentLossyScale.y : 1f,
+            1f
+        );
+
+        // Posición del jugador
+        Vector2 playerPos = (Vector2)playerTransform.position;
+
+        // Coordenadas del mouse en el mundo
         Vector3 mouseScreen = Input.mousePosition;
-        mouseScreen.z = -cam.transform.position.z; // Distancia correcta a la cámara
+        mouseScreen.z = -cam.transform.position.z;
         Vector3 mouseWorld = cam.ScreenToWorldPoint(mouseScreen);
 
-        Vector2 aimDirection = (new Vector2(mouseWorld.x, mouseWorld.y) - (Vector2)playerTransform.position);
+        Vector2 aimDirection = (new Vector2(mouseWorld.x, mouseWorld.y) - playerPos);
         float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
 
-        // Radio exterior gigante que garantice tapar cualquier resolución y zoom de cámara
+        // Radio exterior gigante que tape toda la pantalla
         float camHeight = cam.orthographicSize * 2f;
         float camWidth = camHeight * cam.aspect;
-        float outerRadius = Mathf.Max(camWidth, camHeight) * 4f + 120f;
+        float outerRadius = Mathf.Max(camWidth, camHeight) * 4f + 150f;
 
         int ringCount = totalRays + 1;
         int totalVertices = ringCount * 2;
@@ -132,27 +140,26 @@ public class InvertedDarknessVision : MonoBehaviour
 
             if (absDiff <= halfFov)
             {
-                // Cono frontal largo apuntando al cursor
+                // Cono frontal apuntando al cursor
                 float blend = Mathf.Cos((absDiff / halfFov) * (Mathf.PI / 2f));
                 maxRayDistance = Mathf.Lerp(closeRadius, viewDistance, blend);
             }
 
             // Raycast contra paredes
-            RaycastHit2D hit = Physics2D.Raycast(playerTransform.position, dir, maxRayDistance, obstacleLayer);
+            RaycastHit2D hit = Physics2D.Raycast(playerPos, dir, maxRayDistance, obstacleLayer);
 
             Vector3 innerPointLocal;
             if (hit.collider != null)
             {
-                // Como transform.rotation es identidad y transform.position es playerTransform.position,
-                // el punto local es simplemente la diferencia directa:
-                innerPointLocal = new Vector3(hit.point.x - playerTransform.position.x, hit.point.y - playerTransform.position.y, 0f);
+                // Punto local respecto al centro del jugador
+                innerPointLocal = new Vector3(hit.point.x - playerPos.x, hit.point.y - playerPos.y, 0f);
             }
             else
             {
                 innerPointLocal = dir * maxRayDistance;
             }
 
-            // Borde interior (hueco de visión)
+            // Borde interior (hueco de visión recortado)
             vertices[i] = innerPointLocal;
             colors[i] = darknessColor;
 
