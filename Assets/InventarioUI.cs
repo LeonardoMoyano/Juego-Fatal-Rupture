@@ -4,18 +4,19 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Panel de Inventario con cuadrícula 3x3 que se abre/cierra con la tecla [TAB].
-/// - Grilla 3x3 de slots (9 casillas).
-/// - Al pasar el mouse por encima muestra un Tooltip con el nombre.
+/// - Grilla 3x3 de slots (9 casillas) con tamaño y letras ampliadas.
+/// - Pausa el movimiento, apuntado y ataque del jugador mientras está abierto.
+/// - Al pasar el mouse por encima muestra un Tooltip claro con el nombre.
 /// - Al hacer clic en un ítem abre un menú contextual con: "Info", "Usar" y "Desechar".
-/// - Funciona automáticamente sin necesidad de configurar prefabs complicados en el Canvas.
 /// </summary>
 public class InventarioUI : MonoBehaviour
 {
     [Header("Configuración")]
     public KeyCode toggleKey = KeyCode.Tab;
 
+    public static bool EstaAbierto { get; private set; } = false;
+
     private GameObject panelPrincipal;
-    private bool estaAbierto = false;
 
     // Componentes de la grilla
     private Image[] slotIconos = new Image[9];
@@ -31,8 +32,24 @@ public class InventarioUI : MonoBehaviour
     private GameObject tooltip;
     private Text tooltipTexto;
 
+    // Referencias al jugador para pausar control
+    private PlayerMovement playerMovement;
+    private PlayerAim playerAim;
+    private PlayerAttack playerAttack;
+    private Rigidbody2D playerRb;
+
     void Start()
     {
+        // Encontrar scripts del jugador
+        GameObject playerGO = GameObject.FindGameObjectWithTag("Player");
+        if (playerGO != null)
+        {
+            playerMovement = playerGO.GetComponent<PlayerMovement>();
+            playerAim = playerGO.GetComponent<PlayerAim>();
+            playerAttack = playerGO.GetComponent<PlayerAttack>();
+            playerRb = playerGO.GetComponent<Rigidbody2D>();
+        }
+
         ConstruirUIProcedural();
         CerrarInventario();
     }
@@ -41,32 +58,47 @@ public class InventarioUI : MonoBehaviour
     {
         if (Input.GetKeyDown(toggleKey))
         {
-            if (estaAbierto) CerrarInventario();
+            if (EstaAbierto) CerrarInventario();
             else AbrirInventario();
         }
 
-        if (estaAbierto && tooltip != null && tooltip.activeSelf)
+        if (EstaAbierto && tooltip != null && tooltip.activeSelf)
         {
-            tooltip.transform.position = Input.mousePosition + new Vector3(15f, -15f, 0f);
+            tooltip.transform.position = Input.mousePosition + new Vector3(20f, -20f, 0f);
         }
     }
 
     public void AbrirInventario()
     {
-        estaAbierto = true;
+        EstaAbierto = true;
         if (panelPrincipal != null) panelPrincipal.SetActive(true);
         Cursor.visible = true;
+
+        // Pausar control del personaje
+        SetPlayerControls(false);
+
         ActualizarGrilla();
         if (menuContextual != null) menuContextual.SetActive(false);
     }
 
     public void CerrarInventario()
     {
-        estaAbierto = false;
+        EstaAbierto = false;
         if (panelPrincipal != null) panelPrincipal.SetActive(false);
         if (menuContextual != null) menuContextual.SetActive(false);
         if (tooltip != null) tooltip.SetActive(false);
         Cursor.visible = false;
+
+        // Reactivar control del personaje
+        SetPlayerControls(true);
+    }
+
+    private void SetPlayerControls(bool enabled)
+    {
+        if (playerMovement != null) playerMovement.enabled = enabled;
+        if (playerAim != null) playerAim.enabled = enabled;
+        if (playerAttack != null) playerAttack.enabled = enabled;
+        if (!enabled && playerRb != null) playerRb.linearVelocity = Vector2.zero;
     }
 
     public void ActualizarGrilla()
@@ -84,7 +116,7 @@ public class InventarioUI : MonoBehaviour
                 int cant = inventario[nombre];
 
                 slotItems[i] = nombre;
-                slotIconos[i].color = new Color(0.2f, 0.6f, 0.95f, 0.95f); // Cuadrado azul como pediste
+                slotIconos[i].color = new Color(0.2f, 0.6f, 0.95f, 0.95f); // Cuadrado azul
                 slotTextos[i].text = cant > 1 ? $"x{cant}" : "";
                 slotIconos[i].gameObject.SetActive(true);
             }
@@ -168,7 +200,6 @@ public class InventarioUI : MonoBehaviour
     private void RestarItem(string nombre)
     {
         if (InventarioManager.Instance == null) return;
-        // Agregar -1 cantidad
         InventarioManager.Instance.AgregarItem(nombre, -1);
     }
 
@@ -187,7 +218,7 @@ public class InventarioUI : MonoBehaviour
         }
     }
 
-    // --- Construcción Procedural de la UI ---
+    // --- Construcción Procedural de la UI (Ampliadas dimensiones y tipografías) ---
 
     private void ConstruirUIProcedural()
     {
@@ -201,40 +232,40 @@ public class InventarioUI : MonoBehaviour
             cgo.AddComponent<GraphicRaycaster>();
         }
 
-        // Panel Principal
+        // Panel Principal más amplio (500 x 560 px)
         panelPrincipal = new GameObject("Panel_Inventario_3x3");
         panelPrincipal.transform.SetParent(canvas.transform, false);
 
         RectTransform rt = panelPrincipal.AddComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(360f, 400f);
+        rt.sizeDelta = new Vector2(500f, 560f);
         rt.anchoredPosition = Vector2.zero;
 
         Image bg = panelPrincipal.AddComponent<Image>();
-        bg.color = new Color(0.06f, 0.06f, 0.08f, 0.95f); // Ventana oscura
+        bg.color = new Color(0.06f, 0.06f, 0.08f, 0.96f); // Ventana oscura
 
-        // Título "INVENTARIO (TAB)"
+        // Título "INVENTARIO [TAB]" más grande
         GameObject titleGO = new GameObject("Titulo");
         titleGO.transform.SetParent(panelPrincipal.transform, false);
         RectTransform titleRT = titleGO.AddComponent<RectTransform>();
-        titleRT.anchoredPosition = new Vector2(0f, 160f);
-        titleRT.sizeDelta = new Vector2(300f, 35f);
+        titleRT.anchoredPosition = new Vector2(0f, 230f);
+        titleRT.sizeDelta = new Vector2(450f, 50f);
         Text titleTxt = titleGO.AddComponent<Text>();
         titleTxt.text = "INVENTARIO [TAB]";
         titleTxt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        titleTxt.fontSize = 20;
+        titleTxt.fontSize = 28;
         titleTxt.alignment = TextAnchor.MiddleCenter;
         titleTxt.color = Color.white;
 
-        // Grilla 3x3
+        // Grilla 3x3 ampliada (casillas de 120 x 120 px)
         GameObject gridGO = new GameObject("Grilla");
         gridGO.transform.SetParent(panelPrincipal.transform, false);
         RectTransform gridRT = gridGO.AddComponent<RectTransform>();
         gridRT.anchoredPosition = new Vector2(0f, 15f);
-        gridRT.sizeDelta = new Vector2(270f, 270f);
+        gridRT.sizeDelta = new Vector2(400f, 400f);
 
         GridLayoutGroup grid = gridGO.AddComponent<GridLayoutGroup>();
-        grid.cellSize = new Vector2(80f, 80f);
-        grid.spacing = new Vector2(10f, 10f);
+        grid.cellSize = new Vector2(115f, 115f);
+        grid.spacing = new Vector2(16f, 16f);
         grid.startCorner = GridLayoutGroup.Corner.UpperLeft;
         grid.childAlignment = TextAnchor.MiddleCenter;
 
@@ -244,43 +275,42 @@ public class InventarioUI : MonoBehaviour
             GameObject slot = new GameObject($"Slot_{i}");
             slot.transform.SetParent(gridGO.transform, false);
             Image slotBg = slot.AddComponent<Image>();
-            slotBg.color = new Color(0.15f, 0.15f, 0.2f, 0.9f);
+            slotBg.color = new Color(0.14f, 0.14f, 0.19f, 0.95f);
 
             Button btn = slot.AddComponent<Button>();
             btn.onClick.AddListener(() => AlHacerClicEnSlot(slotIdx));
 
-            // Detector de mouse sobre el slot
             SlotHoverTrigger hover = slot.AddComponent<SlotHoverTrigger>();
             hover.Init(slotIdx, this);
 
-            // Icono del ítem (cuadrado azul)
+            // Icono del ítem (cuadrado azul grande)
             GameObject itemIconGO = new GameObject("Icono");
             itemIconGO.transform.SetParent(slot.transform, false);
             RectTransform iconRT = itemIconGO.AddComponent<RectTransform>();
-            iconRT.sizeDelta = new Vector2(65f, 65f);
+            iconRT.sizeDelta = new Vector2(90f, 90f);
             slotIconos[i] = itemIconGO.AddComponent<Image>();
             slotIconos[i].color = new Color(0.2f, 0.6f, 0.95f, 0.95f);
             itemIconGO.SetActive(false);
 
-            // Texto de cantidad
+            // Texto de cantidad ampliado
             GameObject cantGO = new GameObject("Cantidad");
             cantGO.transform.SetParent(slot.transform, false);
             RectTransform cantRT = cantGO.AddComponent<RectTransform>();
-            cantRT.anchorMin = new Vector2(0.5f, 0f);
+            cantRT.anchorMin = new Vector2(0.4f, 0f);
             cantRT.anchorMax = new Vector2(1f, 0.35f);
-            cantRT.offsetMin = Vector2.zero;
-            cantRT.offsetMax = Vector2.zero;
+            cantRT.offsetMin = new Vector2(0f, 4f);
+            cantRT.offsetMax = new Vector2(-6f, 0f);
             slotTextos[i] = cantGO.AddComponent<Text>();
             slotTextos[i].font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-            slotTextos[i].fontSize = 14;
+            slotTextos[i].fontSize = 20;
             slotTextos[i].alignment = TextAnchor.LowerRight;
             slotTextos[i].color = Color.white;
         }
 
-        // Menú Contextual ("Info", "Usar", "Desechar")
+        // Menú Contextual más amplio
         ConstruirMenuContextual(canvas);
 
-        // Tooltip
+        // Tooltip ampliado
         ConstruirTooltip(canvas);
     }
 
@@ -290,13 +320,13 @@ public class InventarioUI : MonoBehaviour
         menuContextual.transform.SetParent(canvas.transform, false);
 
         RectTransform rt = menuContextual.AddComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(180f, 150f);
+        rt.sizeDelta = new Vector2(240f, 210f);
         Image bg = menuContextual.AddComponent<Image>();
         bg.color = new Color(0.04f, 0.04f, 0.06f, 0.98f);
 
         VerticalLayoutGroup vl = menuContextual.AddComponent<VerticalLayoutGroup>();
-        vl.padding = new RectOffset(10, 10, 8, 8);
-        vl.spacing = 6;
+        vl.padding = new RectOffset(12, 12, 12, 12);
+        vl.spacing = 10;
         vl.childControlWidth = true;
         vl.childControlHeight = false;
 
@@ -304,13 +334,12 @@ public class InventarioUI : MonoBehaviour
         CrearBotonMenu("USAR", AccionUsar);
         CrearBotonMenu("DESECHAR", AccionDesechar);
 
-        // Texto informativo abajo del menú
         GameObject infoGO = new GameObject("TextoInfo");
         infoGO.transform.SetParent(menuContextual.transform, false);
         textoInfo = infoGO.AddComponent<Text>();
         textoInfo.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        textoInfo.fontSize = 11;
-        textoInfo.color = new Color(0.9f, 0.85f, 0.5f, 1f);
+        textoInfo.fontSize = 14;
+        textoInfo.color = new Color(0.95f, 0.9f, 0.5f, 1f);
         textoInfo.alignment = TextAnchor.MiddleCenter;
 
         menuContextual.SetActive(false);
@@ -321,10 +350,10 @@ public class InventarioUI : MonoBehaviour
         GameObject bgo = new GameObject($"Btn_{texto}");
         bgo.transform.SetParent(menuContextual.transform, false);
         RectTransform rt = bgo.AddComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(150f, 26f);
+        rt.sizeDelta = new Vector2(200f, 36f);
 
         Image img = bgo.AddComponent<Image>();
-        img.color = new Color(0.2f, 0.22f, 0.28f, 1f);
+        img.color = new Color(0.2f, 0.24f, 0.32f, 1f);
 
         Button btn = bgo.AddComponent<Button>();
         btn.onClick.AddListener(accion);
@@ -340,7 +369,7 @@ public class InventarioUI : MonoBehaviour
         Text t = txtGO.AddComponent<Text>();
         t.text = texto;
         t.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        t.fontSize = 13;
+        t.fontSize = 17;
         t.alignment = TextAnchor.MiddleCenter;
         t.color = Color.white;
     }
@@ -351,7 +380,7 @@ public class InventarioUI : MonoBehaviour
         tooltip.transform.SetParent(canvas.transform, false);
 
         RectTransform rt = tooltip.AddComponent<RectTransform>();
-        rt.sizeDelta = new Vector2(130f, 30f);
+        rt.sizeDelta = new Vector2(170f, 40f);
         rt.pivot = new Vector2(0f, 1f);
 
         Image img = tooltip.AddComponent<Image>();
@@ -367,35 +396,10 @@ public class InventarioUI : MonoBehaviour
 
         tooltipTexto = txtGO.AddComponent<Text>();
         tooltipTexto.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        tooltipTexto.fontSize = 13;
+        tooltipTexto.fontSize = 16;
         tooltipTexto.alignment = TextAnchor.MiddleCenter;
-        tooltipTexto.color = new Color(0.9f, 0.9f, 0.9f, 1f);
+        tooltipTexto.color = new Color(0.95f, 0.95f, 0.95f, 1f);
 
         tooltip.SetActive(false);
-    }
-}
-
-/// <summary>
-/// Componente auxiliar para detectar el hover del mouse sobre cada slot.
-/// </summary>
-public class SlotHoverTrigger : MonoBehaviour, UnityEngine.EventSystems.IPointerEnterHandler, UnityEngine.EventSystems.IPointerExitHandler
-{
-    private int slotIndex;
-    private InventarioUI inventarioUI;
-
-    public void Init(int index, InventarioUI ui)
-    {
-        slotIndex = index;
-        inventarioUI = ui;
-    }
-
-    public void OnPointerEnter(UnityEngine.EventSystems.PointerEventData eventData)
-    {
-        if (inventarioUI != null) inventarioUI.AlPasarMouseSobreSlot(slotIndex, true);
-    }
-
-    public void OnPointerExit(UnityEngine.EventSystems.PointerEventData eventData)
-    {
-        if (inventarioUI != null) inventarioUI.AlPasarMouseSobreSlot(slotIndex, false);
     }
 }
