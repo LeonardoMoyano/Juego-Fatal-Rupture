@@ -6,7 +6,7 @@ using UnityEngine;
 /// - Círculo cercano de 360° alrededor del cuerpo para no estar ciego de espaldas.
 /// - Bordes con DEGRADADO / DIFUMINADO SUAVE (penumbra) antes de la oscuridad total.
 /// - Detección y bloqueo milimétrico con paredes (Layer Wall).
-/// - 100% inmune a la escala o rotación del Player.
+/// - Se congela / pausa automáticamente cuando el inventario (TAB) está abierto.
 /// </summary>
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class InvertedDarknessVision : MonoBehaviour
@@ -48,6 +48,9 @@ public class InvertedDarknessVision : MonoBehaviour
     private Color[] colors;
     private MeshRenderer meshRenderer;
 
+    // Guarda el último ángulo apuntado para mantenerlo fijo cuando el inventario está abierto
+    private float lastAimAngle = 0f;
+
     void Start()
     {
         mesh = new Mesh();
@@ -83,6 +86,10 @@ public class InvertedDarknessVision : MonoBehaviour
 
     void LateUpdate()
     {
+        // Si el inventario está abierto, no recalculamos hacia el mouse:
+        // mantenemos congelada la visión en la última dirección que miraba el personaje
+        if (InventarioUI.EstaAbierto) return;
+
         GenerateSoftZomboidMesh();
     }
 
@@ -92,11 +99,9 @@ public class InvertedDarknessVision : MonoBehaviour
 
         Camera cam = Camera.main;
 
-        // Mantener posición del jugador y anular rotación del padre
         transform.position = new Vector3(playerTransform.position.x, playerTransform.position.y, -0.5f);
         transform.rotation = Quaternion.identity;
 
-        // Neutralizar escala heredada del Player
         Vector3 parentLossyScale = transform.parent != null ? transform.parent.lossyScale : Vector3.one;
         transform.localScale = new Vector3(
             parentLossyScale.x != 0f ? 1f / parentLossyScale.x : 1f,
@@ -106,23 +111,18 @@ public class InvertedDarknessVision : MonoBehaviour
 
         Vector2 playerPos = (Vector2)playerTransform.position;
 
-        // Dirección y ángulo hacia el mouse
         Vector3 mouseScreen = Input.mousePosition;
         mouseScreen.z = -cam.transform.position.z;
         Vector3 mouseWorld = cam.ScreenToWorldPoint(mouseScreen);
 
         Vector2 aimDirection = (new Vector2(mouseWorld.x, mouseWorld.y) - playerPos);
         float aimAngle = Mathf.Atan2(aimDirection.y, aimDirection.x) * Mathf.Rad2Deg;
+        lastAimAngle = aimAngle;
 
-        // Radio exterior gigante que cubra cualquier resolución de pantalla
         float camHeight = cam.orthographicSize * 2f;
         float camWidth = camHeight * cam.aspect;
         float outerRadius = Mathf.Max(camWidth, camHeight) * 4f + 150f;
 
-        // Estructura de 3 Anillos concéntricos:
-        // Anillo 1 (0 .. totalRays): Borde 100% transparente (visión clara)
-        // Anillo 2 (ringCount .. 2*ringCount - 1): Borde con inicio de oscuridad total (fin del degradado)
-        // Anillo 3 (2*ringCount .. 3*ringCount - 1): Borde gigante negro que tapa toda la pantalla
         int ringCount = totalRays + 1;
         int totalVertices = ringCount * 3;
 
@@ -130,7 +130,6 @@ public class InvertedDarknessVision : MonoBehaviour
         {
             vertices = new Vector3[totalVertices];
             colors = new Color[totalVertices];
-            // 2 bandas de quads = 2 * totalRays * 6 índices de triángulos
             triangles = new int[totalRays * 12];
         }
 
@@ -145,14 +144,9 @@ public class InvertedDarknessVision : MonoBehaviour
             float angleDiff = Mathf.DeltaAngle(aimAngle, currentAngle);
             float absDiff = Mathf.Abs(angleDiff);
 
-            // Forma de abanico amplio (Pie Slice / Cono de Project Zomboid):
-            // Dentro del ángulo de visión es el alcance frontal completo;
-            // en los costados transiciona al radio cercano.
             float theoreticalMaxDistance = closeRadius;
             if (absDiff <= halfFov)
             {
-                // En el cono frontal: borde plano/circular amplio como en el diagrama
-                // Suavizamos ligeramente solo los últimos 15° del borde lateral del cono
                 float edgeAngle = 15f;
                 if (absDiff > halfFov - edgeAngle)
                 {
@@ -165,7 +159,6 @@ public class InvertedDarknessVision : MonoBehaviour
                 }
             }
 
-            // Raycast contra paredes
             RaycastHit2D hit = Physics2D.Raycast(playerPos, dir, theoreticalMaxDistance, obstacleLayer);
 
             float clearDistance;
@@ -173,32 +166,25 @@ public class InvertedDarknessVision : MonoBehaviour
 
             if (hit.collider != null)
             {
-                // Si choca con una pared: el corte con la pared es neto (la sombra de la pared no traspasa)
                 clearDistance = hit.distance;
                 solidDarknessDistance = hit.distance + 0.1f;
             }
             else
             {
-                // Si es campo abierto: la visión clara llega hasta (distancia - fadeDistance)
-                // y desde ahí se difumina suavemente hasta la oscuridad total
                 float effectiveFade = Mathf.Min(fadeDistance, theoreticalMaxDistance * 0.4f);
                 clearDistance = Mathf.Max(theoreticalMaxDistance - effectiveFade, 0.5f);
                 solidDarknessDistance = theoreticalMaxDistance;
             }
 
-            // 1) Vértice del área de visión 100% clara (Alpha = 0, completamente transparente)
             vertices[i] = dir * clearDistance;
             colors[i] = new Color(0f, 0f, 0f, 0f);
 
-            // 2) Vértice del final del degradado (Alpha = 1, oscuridad total empieza aquí)
             vertices[ringCount + i] = dir * solidDarknessDistance;
             colors[ringCount + i] = new Color(0f, 0f, 0f, 1f);
 
-            // 3) Vértice exterior gigante para cubrir toda la cámara (Alpha = 1, negro sólido)
             vertices[ringCount * 2 + i] = dir * outerRadius;
             colors[ringCount * 2 + i] = new Color(0f, 0f, 0f, 1f);
 
-            // Construir los triángulos de ambas bandas
             if (i < totalRays)
             {
                 int c1 = i;
@@ -208,7 +194,6 @@ public class InvertedDarknessVision : MonoBehaviour
                 int c3 = ringCount * 2 + i;
                 int n3 = ringCount * 2 + i + 1;
 
-                // Banda 1: Degradado difuminado (desde Alpha 0 a Alpha 1)
                 int tri1 = i * 6;
                 triangles[tri1 + 0] = c1;
                 triangles[tri1 + 1] = c2;
@@ -218,7 +203,6 @@ public class InvertedDarknessVision : MonoBehaviour
                 triangles[tri1 + 4] = c2;
                 triangles[tri1 + 5] = n2;
 
-                // Banda 2: Manto negro exterior gigante sólido (Alpha 1 a Alpha 1)
                 int tri2 = (totalRays * 6) + (i * 6);
                 triangles[tri2 + 0] = c2;
                 triangles[tri2 + 1] = c3;
